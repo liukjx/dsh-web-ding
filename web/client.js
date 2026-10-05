@@ -939,8 +939,11 @@ window.__ModuleLoader__.load({
             ),
             h("p", { key: blk + "-sub-distinct-desc", style: { gridColumn: "1 / 3", color: hintColor, fontSize: 12, lineHeight: 1.55, margin: "0 0 6px" } },
               tr("subagentDistinctDesc")),
-            // 独立音色打开时才展开子 agent 的三个调音滑杆。
-            ...(v.subagentDistinctTone === true ? [
+            // 音色组只在"子 agent 真的会响"时才有意义:总闸(subagentEnabled)关着时
+            // 子 agent 一律静音,再展示音色滑杆只会让人以为它生效。此前只看
+            // subagentDistinctTone,于是"先勾启用→再勾独立音色→取消启用"会留下
+            // {enabled:false, distinct:true} 的搁浅态,并照常渲染整个音色区。
+            ...(v.subagentEnabled === true && v.subagentDistinctTone === true ? [
               h("h3", { key: blk + "-sub-tone-title", style: { gridColumn: "1 / 3", fontSize: 13, fontWeight: 600, margin: "6px 0 0" } },
                 tr("subagentToneTitle")),
               h(BufferedSlider, { key: blk + "-sub-vol", labelText: tr("volume"), min: 0, max: 1, step: 0.05, value: Number(v.subagentVolume) || 0.7, disabled: disabled, display: pct, onSubmit: (n) => update("subagentVolume", n) }),
@@ -952,11 +955,12 @@ window.__ModuleLoader__.load({
                   h("button", { style: buttonStyle, disabled: disabled, onClick: () => play(subTone()) }, tr("playOnce"))),
               ),
               // 对比试听:先主音,隔 0.8s 再子 agent 音——一次点击分辨两种音色。
-              // 独立音色关闭时两种声音本来就相同,按钮禁用。
+              // 此行走的是「独立音色已开」的分支:关闭时两种声音本来就相同,整行不渲染,
+              // 所以 disabled 只跟随表单可写性,不必再判一次 subagentDistinctTone。
               h("div", { key: blk + "-sub-compare", style: lastRowStyle },
                 h("span", { style: labelStyle }, tr("previewCompare")),
                 h("span", { style: controlStyle },
-                  h("button", { style: buttonStyle, disabled: disabled || v.subagentDistinctTone !== true, onClick: () => {
+                  h("button", { style: buttonStyle, disabled: disabled, onClick: () => {
                     play({ volume: v.turnEndVolume, freq: v.turnEndFreq, decayMs: v.turnEndDecayMs });
                     window.setTimeout(() => play(subTone()), 800);
                   } }, tr("playOnce"))),

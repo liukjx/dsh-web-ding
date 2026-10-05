@@ -43,9 +43,17 @@ question frame, so this block is entirely browser-side.
 | `questionDecayMs` | number 100..4000 | `900` | Tone decay length (ms). |
 
 **Block 2 — 回合结束 (turn-end ding)** — the classic agent/status idle-transition
-tone. The Host observes `agent/status`; on the idle transition (all turns done,
-including sub-agents, before the next human turn; fresh sessions that never ran
-and repeated idle ticks stay silent) it publishes the `done` signal.
+tone. The Host observes `agent/status`; on the idle transition (a top-level turn
+done before the next human turn; fresh sessions that never ran and repeated idle
+ticks stay silent) it publishes the `done` signal.
+
+> **Behaviour change (v0.7.0).** Until now the turn-end ding fired on *every*
+> idle transition, including a delegated sub-agent's — so a parent that fanned
+> out to N children rang N+1 times. Sub-agent turn ends are now classified and
+> suppressed by default (`subagentEnabled: false`), which means **a sub-agent
+> finishing on its own no longer dings**; the parent still dings when it wraps
+> up. Set `subagentEnabled: true` to restore the old "every turn end rings"
+> behaviour (optionally with a distinct sub-agent tone).
 
 | Field | Type | Default | Meaning |
 |-------|------|---------|---------|
@@ -69,12 +77,12 @@ therefore produces N+1 turn-end signals — one per child, then the parent's own
 | `subagentFreq` | number 80..4000 | `440` | Fundamental frequency of the sub-agent ding (Hz) — one octave below the main default, so it reads as in-progress rather than all-done. |
 | `subagentDecayMs` | number 100..4000 | `900` | Sub-agent tone decay length (ms). |
 
-A child is identified from its **persisted** session header — `origin:
-'subagent'\` or \`delegationDepth > 0\` — so the classification survives restart
-and resume. The two markers are accepted independently because not every
-child creation path stamps both. `parentSession` alone is deliberately NOT
-treated as delegation: a session **fork** also carries it, and a fork is a new
-independent root, not a child.
+A child is identified from its **persisted** session header — either
+`origin === 'subagent'` or `delegationDepth > 0` — so the classification
+survives restart and resume. The two markers are accepted independently because
+not every child creation path stamps both. `parentSession` alone is
+deliberately NOT treated as delegation: a session **fork** also carries it, and
+a fork is a new independent root, not a child.
 
 Besides the ring, each turn end drops a bottom-right toast (Win11-style,
 auto-dismisses after 6 s). Click it to open the right-side notification

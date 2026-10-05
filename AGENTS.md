@@ -302,7 +302,11 @@ package.json 里那一整段 npm 描述。现在 `locale/{en,zh}.json` 的 `meta
    折中。**风险登记**:该锚点属宿主内部实现,上游一改这块就静默失效;`wd-ding-trigger-probe.mjs`
    与 `wd-audio-unlock-apply-probe.mjs` 是它的回归闸门。
 3. **回合结束判据用 `agent/status` 的 idle 转变**(不是 durable 的 `turn/end`):`practices.md`
-   偏好 durable 事件,但本插件要的语义是"含子代理在内所有回合都结束、且下一个人类回合之前",
+   偏好 durable 事件,但本插件要的语义是"顶层回合结束、且下一个人类回合之前"。被委派的子
+   agent 的 idle 转变**也**会到达本监听器(`agent/status` 是 scope 过滤的,但过滤只向下收窄:
+   未打 tag 的监听器对所有 dispatch key 放行),故由 `classifyAgent` 按持久化 session header
+   识别并按 `subagentEnabled`(默认 `false`)静音——**v0.7.0 起默认不再为子 agent 单独响**
+   (此前"含子代理在内所有回合都结束"的旧语义已废止,见 README 的行为变更说明)。
    `turn/end` 会每回合响一次。这是**监听事件、不是轮询**(规范禁的是轮询)。
 4. **peer 只声明 `peerDependencies`(+ optional meta),不声明 `devDependencies`**:
    `publish.zh.md` 建议共享宿主实例的 dsh 包同时进 peer 与 dev;本插件是 plain JS、无类型检查
