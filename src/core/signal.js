@@ -47,10 +47,14 @@ let lastAt = 0
  * @param {string|undefined} title the session display title at that moment
  *   (already resolved by the caller — see `hooks/idle.js`; omitted when unknown,
  *   and the browser then renders the record without a title)
+ * @param {{subagent?: boolean, depth?: number}|undefined} meta turn-end
+ *   classification for tone selection: `subagent` marks a delegated child
+ *   rather than the watched root, `depth` its delegation depth. Omit for an
+ *   unclassified turn end.
  * @returns {Promise<void>}
  */
 let warnedOnce = false
-export async function publishDingSignal(ctx, sessionId, title) {
+export async function publishDingSignal(ctx, sessionId, title, meta) {
   try {
     const settings = ctx.get('settings')
     if (settings === undefined || typeof settings.update !== 'function') return
@@ -62,6 +66,12 @@ export async function publishDingSignal(ctx, sessionId, title) {
       at,
       ...(typeof sessionId === 'string' && sessionId !== '' ? { sessionId } : {}),
       ...(typeof title === 'string' && title !== '' ? { title } : {}),
+      ...(meta !== null && typeof meta === 'object'
+        ? {
+          ...(meta.subagent === true ? { subagent: true } : {}),
+          ...(typeof meta.depth === 'number' ? { depth: meta.depth } : {}),
+        }
+        : {}),
     }
     await settings.update(NS, { [SIGNAL_FIELD]: signal })
     if (!warnedOnce) {
