@@ -14,7 +14,7 @@ a pure-listener Host half + a browser client half connected by the official
 
 | Layer | What happens |
 |-------|--------------|
-| Host (`index.js` + `src/`) | Listens for the `agent/status` **idle transition** (all turns done before the next human turn; a fresh idle session that never ran, and repeated idle ticks, stay silent). Sub-agent (delegated child) turn ends are classified from the persisted session header and suppressed unless you opt in. Publishes `{ phase:'done', at, sessionId, title, subagent?, depth? }` into the `falling-ts-web-ding` settings namespace — `title` is read here from the official `sessionProjections` `title` unit, so the browser never has to fetch it. Never emits audio, never calls the OS. |
+| Host (`index.js` + `src/`) | Listens for the `agent/status` **idle transition** (all turns done before the next human turn; a fresh idle session that never ran, and repeated idle ticks, stay silent). Sub-agent (delegated child) turn ends are classified from the persisted session header and suppressed unless you opt in. Publishes a **complete** `{ phase:'done', at, sessionId, title, subagent, depth }` (absent values are `null`/`false`/`0`, never omitted — see below) into the `falling-ts-web-ding` settings namespace — `title` is read here from the official `sessionProjections` `title` unit, so the browser never has to fetch it. Never emits audio, never calls the OS. |
 | Browser (`web/client.js`) | Mirrors the namespace live via `configForms`. On a strictly-newer `done` signal it synthesizes a short `ding` (three sine oscillators + exponential decay envelopes) with the Web Audio API and plays it through the tab — using the sub-agent tone when the signal is flagged `subagent` and a distinct tone is enabled — and, at the same moment, pops a Win11-style toast in the bottom-right corner. Clicking the toast slides in a notification drawer listing every turn-end message (kept in browser `localStorage`, capped at 100, deduped by signal `at`), with per-message delete and a clear-all button. Everything stays front-end: no backend audio, no OS notification. |
 
 ## Install
@@ -83,6 +83,17 @@ survives restart and resume. The two markers are accepted independently because
 not every child creation path stamps both. `parentSession` alone is
 deliberately NOT treated as delegation: a session **fork** also carries it, and
 a fork is a new independent root, not a child.
+
+**Every publish writes every field (fixed 2026-10-07).** `settings.update` is a
+**recursive merge**, not a replace (`mergeLayers` in deepseek-harness
+`packages/settings/settings/src/index.ts`): it copies the stored section and
+assigns only the keys the patch itself carries, so an omitted key INHERITS the
+previous publish instead of being cleared. The old payload spread `subagent` in
+only for children, which latched `subagent: true` onto the namespace after the
+first child turn end — every later **root** turn end replayed it, badging the
+toast `[子agent]` (and, with `subagentDistinctTone`, playing the child tone for
+the root ding). `buildDingSignal` now always returns the full payload. Gate:
+`node tests/signal.test.mjs`.
 
 Besides the ring, each turn end drops a bottom-right toast (Win11-style,
 auto-dismisses after 6 s). Click it to open the right-side notification
